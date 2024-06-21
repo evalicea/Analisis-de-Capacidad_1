@@ -1,0 +1,253 @@
+---
+title: "Análisis de Línea de producción de Pastas"
+author: "Dra. Eva Marcela Licea De Anda"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+
+Análisis de capacidad de producción del contenido en paquetes de pasta de la línea 1 de la empresa FIDEOS & PASTAS.
+
+La línea 1, produce pastas de 200 g y se quiere certificar su proceso de envasado. El valor nominal es de 200g, la Especificación superior 208g y la Especificación inferior de 198g.
+
+Se ha realizado un muestreo sistemático de 5 muestras cada hora, durante 24 horas. La información se encuentra en la siguiente base de datos
+
+# Análisis de Contenido de Pastas
+
+```{r rows.print=24}
+linea1 <- read.table("linea1.csv", sep = ",", header = TRUE)
+linea1
+```
+
+Creamos un vector con todos los datos de los subgrupos de la línea 1
+
+```{r}
+vlinea1 = c(linea1$x1, linea1$x2, linea1$x3, linea1$x4, linea1$x5)
+```
+
+## Estadísticos de Tendencia Central
+
+```{r}
+summary(vlinea1)
+```
+
+Guardamos en objetos los valores de los estadísticos
+
+```{r}
+library(modeest)
+media_linea1 = mean(vlinea1)
+media_linea1
+mediana_linea1 = median(vlinea1)
+mediana_linea1
+moda_linea1 = mlv(vlinea1)
+moda_linea1
+```
+
+## Estadísticos de Dispersión
+
+```{r}
+desviacion_est_linea1 = sd(vlinea1)
+desviacion_est_linea1
+varianza_linea1 = var(vlinea1)
+varianza_linea1
+max_linea1 = max(vlinea1)
+max_linea1
+min_linea1 = min(vlinea1)
+min_linea1
+rango_linea1 = max_linea1 - min_linea1
+rango_linea1
+```
+
+## Histograma -Gráfica de Capacidad-
+
+```{r}
+ES <- 208
+EI <- 192
+N= 200
+h = hist(vlinea1, breaks= "sturges", freq = TRUE, right = TRUE, 
+         col = "#C79AFF", border = "black", 
+         main = "Peso de paquetes de pasta", 
+         xlim = c (160,230), xlab = "Peso de paquetes (g)", 
+         ylab = "Frecuencia", las=1)
+abline(v = ES, col = "red",lty=3) 
+text(EI, 25, "EI", cex= NULL, pos=2, col="black") 
+abline(v = EI, col = "red",lty=3)
+text(ES, 25, "ES", cex= NULL, pos=4, col="black") 
+abline(v = N , col = "red",lty=1) 
+text(N, 30, "Objetivo", cex= NULL, pos=2, col="black")
+myx = seq(min(vlinea1), 230, length.out= 50) 
+mymean = mean(vlinea1) 
+mysd = sd(vlinea1) 
+normal = dnorm(x = myx, mean = mymean, sd = mysd) 
+multiplier = h$counts / h$density 
+lines (myx, normal * multiplier[1], col = "blue", lwd = 2)
+```
+
+## Prueba de Hipótesis
+
+Ho: mu igual 200 Ha: mu diferente 200 a un nivel de significancia del 95%
+
+```{r}
+alpha= 0.05
+mu0= 200
+n_linea1= length(vlinea1)
+n_linea1
+
+```
+
+```{r}
+zTest = (media_linea1 - mu0)/ (desviacion_est_linea1/sqrt(n_linea1)) 
+zTest
+
+```
+
+```{r}
+zalphaiz <- qnorm(alpha/2,lower.tail = TRUE)
+zalphaiz
+zalphader <- qnorm(alpha/2, lower.tail = FALSE)
+zalphader
+x = pretty(-3:3,n = 50) 
+y = dnorm(x)
+plot(x,y, ylab = "Densidad", type = "l", col = "black", 
+     main="Prueba de hipotesis bilateral")
+xi <- c(-3,seq(-3,zalphaiz,by = 0.001),zalphaiz)
+yi <- c(0,dnorm(seq(-3,zalphaiz,by = 0.001)),0)
+polygon(xi,yi,col = "red",lty = 1,lwd=1)
+cor.x = c(zalphaiz, seq(zalphaiz,zalphader, by=0.001),zalphader)
+cor.y = c(0,dnorm(seq(zalphaiz, zalphader, by=0.001)),0)
+polygon(cor.x,cor.y, col = "lightgrey",lty = 1,lwd=2)
+xd = c(zalphader,seq(zalphader,3, by=0.001),3)
+yd = c(0,dnorm(seq(zalphader,3,by=0.001)),0)
+polygon(xd,yd, angle = 45,col = "red",lty = 1,lwd=1)
+text(zTest, 0.02, "ZTest", cex= NULL, pos=4, col="black")
+abline(v = zTest, col = "red",lty=3)
+text(0, 0.2 , "Zona de aceptacion H0", cex= NULL, pos=1, col="black")
+```
+
+### Prueba de normalidad
+
+Determinar si los datos siguien una distribución normal, hacer un gráfico q-q y aplicar el test de Shapiro. Shapiro.test se usa para contrastar si un conjunto de datos sigue una distribución normal o no H0: los datos provienen de una distribución normal, Ha: los datos no provienen de una distribución normal sí p-value ≤ 0.05 se rechaza la hipótesis nula si p-value ≥ 0.05 no se rechaza la hipótesis nula.
+
+```{r}
+qqnorm(vlinea1) 
+qqline (vlinea1, col = "red")
+```
+
+```{r}
+shapiro.test(vlinea1)
+```
+
+### Estimación de μx y σx
+
+Debido a que los datos obtenidos, no son a largo plazo, se deberá estimar la media y desviación a largo plazo, empleando los subgrupos, n=5 por lo que 𝑑2=2.326 (Revisar apéndice)
+
+```{r}
+row.sums <- apply(linea1, 1, mean)
+mini <- apply(linea1, 1 , min)
+maxi <- apply(linea1, 1 , max)
+mu <- mean(row.sums)
+mu
+```
+
+```{r}
+rango = maxi - mini
+d2 = 2.326
+rdesvest = mean(rango)/d2
+rdesvest
+```
+
+## Indices de Capacidad
+
+```{r}
+Cp = (ES-EI)/(6*rdesvest) 
+Cp
+```
+
+```{r}
+Cr = (6*rdesvest)/(ES-EI) 
+Cr 
+```
+
+```{r}
+Cpi = (mu-EI)/(3*rdesvest) 
+Cpi
+```
+
+```{r}
+Cps = (ES-mu)/(3*rdesvest) 
+Cps
+```
+
+```{r}
+Cpk = min(Cpi,Cps)
+Cpk
+```
+
+###Indice Taguchi
+
+```{r}
+tau = sqrt((rdesvest^2)+((mu-N)^2)) 
+Cpm = (ES-EI)/(6*tau)
+Cpm
+```
+
+###Cálculo de índice Z Partes por millón fuera de especificación con menor cantidad de pasta
+
+```{r}
+zi = 3*Cpi 
+Pzi = 1-pnorm(zi)
+PPMFEi = Pzi*1000000 
+PPMFEi
+```
+
+Partes por millón fuera de especificación con mayor cantidad de pasta
+
+```{r}
+zs = 3*Cps 
+Pzs = 1-pnorm(zs)
+PPMFEs = Pzs*1000000
+PPMFEs
+```
+
+Partes por millón fuera de especificación
+
+```{r}
+zbench = qnorm(1-(Pzi+Pzs))
+Pzbench = 1-pnorm(zbench) 
+PPMFE = Pzbench*1000000
+PPMFE
+```
+
+### Resumen de todos los índices de capacidad
+
+```{r}
+Resumen_indices_linea1 = data.frame(Cp,Cpi,Cps,Cpk,zi,Pzi,PPMFEi,zs,Pzs,PPMFEs,zbench,Pzbench,PPMFE,Cpm)
+Resumen_indices_linea1
+```
+
+# Analisis de capacidad con la librería SixSigma
+
+```{r}
+library(SixSigma)
+```
+
+```{r message=FALSE, warning=FALSE}
+ss.study.ca(vlinea1, LSL= 192, USL= 208,
+            Target = 200, alpha=0.5,
+            f.main= "Analisis de Capacidad línea 1",
+            f.colours= c("#1b859d", "#356e84", "#50576b", "#6a3f52", "#842839"),"midnightblue")
+
+```
+
+# Bibliografía
+
+Fuente original: <http://www.ptolomeo.unam.mx:8080/xmlui/bitstream/handle/132.248.52.100/16773/Tesis.pdf?sequence=3&isAllowed=y> Adaptado para el estudio de Control Estadístico de Procesos. Mejía Cervantes Karen Evelyn. Análisis de Control Estadístico de calidad utilizando R R Markdown: The Definitive guide. Yihui Xie, J. J. Allaire, Garrett Grolemund <https://bookdown.org/yihui/rmarkdown/>
